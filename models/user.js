@@ -203,6 +203,7 @@ class User {
     const user = result.rows[0];
 
     if (!user) throw new NotFoundError(`No user: ${username}`);
+    return user;
   }
 }
 

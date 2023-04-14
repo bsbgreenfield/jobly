@@ -5,8 +5,8 @@
 const jsonschema = require("jsonschema");
 
 const express = require("express");
-const { ensureLoggedIn } = require("../middleware/auth");
-const { BadRequestError } = require("../expressError");
+const { ensureLoggedIn, isLoggedInAdmin } = require("../middleware/auth");
+const { BadRequestError, UnauthorizedError } = require("../expressError");
 const User = require("../models/user");
 const { createToken } = require("../helpers/tokens");
 const userNewSchema = require("../schemas/userNew.json");
@@ -27,7 +27,7 @@ const router = express.Router();
  * Authorization required: login
  **/
 
-router.post("/", ensureLoggedIn, async function (req, res, next) {
+router.post("/", isLoggedInAdmin, async function (req, res, next) {
   try {
     const validator = jsonschema.validate(req.body, userNewSchema);
     if (!validator.valid) {
@@ -51,7 +51,7 @@ router.post("/", ensureLoggedIn, async function (req, res, next) {
  * Authorization required: login
  **/
 
-router.get("/", ensureLoggedIn, async function (req, res, next) {
+router.get("/", isLoggedInAdmin, async function (req, res, next) {
   try {
     const users = await User.findAll();
     return res.json({ users });
@@ -71,6 +71,10 @@ router.get("/", ensureLoggedIn, async function (req, res, next) {
 router.get("/:username", ensureLoggedIn, async function (req, res, next) {
   try {
     const user = await User.get(req.params.username);
+    // if the user requested is not the user logged in, AND the user logged in is not admin - error
+    if (res.locals.user.username != user.username && !res.locals.user.isLoggedInAdmin){
+      throw new UnauthorizedError()
+    }
     return res.json({ user });
   } catch (err) {
     return next(err);
@@ -95,8 +99,10 @@ router.patch("/:username", ensureLoggedIn, async function (req, res, next) {
       const errs = validator.errors.map(e => e.stack);
       throw new BadRequestError(errs);
     }
-
     const user = await User.update(req.params.username, req.body);
+    if (res.locals.user.username != user.username && !res.locals.user.isLoggedInAdmin){
+      throw new UnauthorizedError()
+    }
     return res.json({ user });
   } catch (err) {
     return next(err);
@@ -111,7 +117,10 @@ router.patch("/:username", ensureLoggedIn, async function (req, res, next) {
 
 router.delete("/:username", ensureLoggedIn, async function (req, res, next) {
   try {
-    await User.remove(req.params.username);
+    const user = await User.remove(req.params.username);
+    if (res.locals.user.username != user.username && !res.locals.user.isLoggedInAdmin){
+      throw new UnauthorizedError()
+    }
     return res.json({ deleted: req.params.username });
   } catch (err) {
     return next(err);
