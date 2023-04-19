@@ -10,6 +10,7 @@ const {
 } = require("../expressError");
 
 const { BCRYPT_WORK_FACTOR } = require("../config.js");
+const app = require("../app");
 
 /** Related functions for users. */
 
@@ -125,21 +126,33 @@ class User {
 
   static async get(username) {
     const userRes = await db.query(
-          `SELECT username,
+          `SELECT users.username,
                   first_name AS "firstName",
                   last_name AS "lastName",
                   email,
-                  is_admin AS "isAdmin"
+                  is_admin AS "isAdmin",
+                  applications.job_id AS job_id
            FROM users
-           WHERE username = $1`,
+           LEFT JOIN applications
+           ON users.username = applications.username
+           WHERE users.username = $1`,
         [username],
     );
+    if (!userRes.rows[0]) throw new NotFoundError(`No user: ${username}`);
+    const user = {
+      "username": userRes.rows[0].username,
+      "firstName":userRes.rows[0].firstName,
+      "lastName": userRes.rows[0].lastName,
+      "email": userRes.rows[0].email,
+      "isAdmin": userRes.rows[0].isAdmin,
+    };
 
-    const user = userRes.rows[0];
-
-    if (!user) throw new NotFoundError(`No user: ${username}`);
-
-    return user;
+    const applications = []
+    for (let row of userRes.rows){
+      applications.push(row.job_id)
+    }
+    console.log("#######################", {user, "applications": applications} )
+    return {user, "applications": applications};
   }
 
   /** Update user data with `data`.
@@ -204,6 +217,24 @@ class User {
 
     if (!user) throw new NotFoundError(`No user: ${username}`);
     return user;
+  }
+
+  static async apply(username, jobId){
+    let validJob = await db.query(
+      `
+      SELECT id FROM jobs WHERE id = $1
+      `, [jobId]
+    )
+    if(!validJob.rows[0]){
+      throw new BadRequestError("no such job", 401)
+    }
+    let result = await db.query(
+      `
+      INSERT INTO applications (username, job_id)
+      VALUES($1, $2)
+      `, [username, jobId]
+    )
+    return {"applied": jobId}
   }
 }
 

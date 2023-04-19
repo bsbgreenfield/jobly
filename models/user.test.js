@@ -134,7 +134,7 @@ describe("findAll", function () {
 describe("get", function () {
   test("works", async function () {
     let user = await User.get("u1");
-    expect(user).toEqual({
+    expect(user.user).toEqual({
       username: "u1",
       firstName: "U1F",
       lastName: "U1L",
@@ -228,3 +228,18 @@ describe("remove", function () {
     }
   });
 });
+
+/*********************** apply */
+describe("apply", function(){
+  test("works", async function(){
+    let job = await db.query(
+      `
+    SELECT id FROM jobs WHERE title = 'tester'
+    `
+    )
+    let resp =  await User.apply('u1', job.rows[0].id )
+    expect(resp).toEqual({'applied': job.rows[0].id})
+    let userResp = await User.get('u1')
+    expect(userResp.applications.length).toEqual(2)
+  })
+})

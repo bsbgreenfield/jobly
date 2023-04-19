@@ -72,10 +72,13 @@ router.get("/:username", ensureLoggedIn, async function (req, res, next) {
   try {
     const user = await User.get(req.params.username);
     // if the user requested is not the user logged in, AND the user logged in is not admin - error
-    if (res.locals.user.username != user.username && !res.locals.user.isLoggedInAdmin){
+    console.log(res.locals.user.isAdmin)
+    if (res.locals.user.username == user.username || res.locals.user.isAdmin){
+      return res.json({ user });
+    }
+    else{
       throw new UnauthorizedError()
     }
-    return res.json({ user });
   } catch (err) {
     return next(err);
   }
@@ -99,11 +102,13 @@ router.patch("/:username", ensureLoggedIn, async function (req, res, next) {
       const errs = validator.errors.map(e => e.stack);
       throw new BadRequestError(errs);
     }
-    const user = await User.update(req.params.username, req.body);
-    if (res.locals.user.username != user.username && !res.locals.user.isLoggedInAdmin){
-      throw new UnauthorizedError()
+    if (res.locals.user.username == req.params.username || res.locals.user.isAdmin){
+      const user = await User.update(req.params.username, req.body);
+      return res.json({ user });
     }
-    return res.json({ user });
+   else{
+    throw new UnauthorizedError()
+   }
   } catch (err) {
     return next(err);
   }
@@ -126,6 +131,16 @@ router.delete("/:username", ensureLoggedIn, async function (req, res, next) {
     return next(err);
   }
 });
+
+router.post("/:username/jobs/:id", ensureLoggedIn, async function(req, res, next) {
+  try{
+    const application = await User.apply(req.params.username, req.params.id)
+    return res.json(application)
+  }
+  catch(err){
+    next(err)
+  }
+})
 
 
 module.exports = router;

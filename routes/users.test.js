@@ -193,15 +193,14 @@ describe("GET /users/:username", function () {
     const resp = await request(app)
         .get(`/users/u1`)
         .set("authorization", `Bearer ${u3Token}`);
-    expect(resp.body).toEqual({
-      user: {
+    expect(resp.body.user.user).toEqual({
         username: "u1",
         firstName: "U1F",
         lastName: "U1L",
         email: "user1@user.com",
         isAdmin: false,
-      },
     });
+    expect(resp.body.user.applications.length).toEqual(1)
   });
 
   test("unauth for anon", async function () {
@@ -284,14 +283,12 @@ describe("PATCH /users/:username", () => {
           firstName: "New",
         })
         .set("authorization", `Bearer ${u3Token}`);
-    expect(resp.body).toEqual({
-      user: {
+    expect(resp.body.user).toEqual({
         username: "u3",
         firstName: "New",
         lastName: "U3L",
         email: "user3@user.com",
-        isAdmin: false,
-      },
+        isAdmin: true,
     });
   });
 
@@ -370,3 +367,5 @@ describe("DELETE /users/:username", function () {
     expect(resp.statusCode).toEqual(404);
   });
 });
+
+

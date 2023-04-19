@@ -3,6 +3,7 @@
 const db = require("../db");
 const { BadRequestError, NotFoundError } = require("../expressError");
 const { sqlForPartialUpdate } = require("../helpers/sql");
+const {filterCompanies} = require('../helpers/filter')
 
 /** Related functions for companies. */
 
@@ -49,7 +50,7 @@ class Company {
    * Returns [{ handle, name, description, numEmployees, logoUrl }, ...]
    * */
 
-  static async findAll(filters = null) {
+  static async findAll(filters=null) {
     if (!filters) {
       const companiesRes = await db.query(
         `SELECT handle,
@@ -62,44 +63,7 @@ class Company {
          return companiesRes.rows;
     }
     else {
-      // create additional WHERE clauses
-      let filterText = 'WHERE '
-      // check that min is not less than max
-      if (filters.minEmployees && filters.maxEmployees) {
-        if (Number(filters.minEmployees) > Number(filters.maxEmployees)) {
-          throw new BadRequestError('max employees cannot be less than min employees', 400)
-        }
-      }
-      // loop through filters, adding appropriate WHERE clauses
-      for (let [key, value] of Object.entries(filters)) {
-        if (key == 'name') {
-          filterText += `${key} ILIKE '%${value}%'`
-        }
-        else if (key == 'minEmployees') {
-          filterText += `num_employees >= ${value}`
-        }
-        else if (key == 'maxEmployees') {
-          filterText += `num_employees <= ${value}`
-        }
-        else {
-          throw new BadRequestError(`${key} cannot be used to filter: valid filter are: "name", "maxEmployees" and "minEmployees, 400`)
-        } 
-        filterText += ' AND '
-      }
-      // remove last AND from string and make query
-      let textLength = filterText.length - 1
-      console.log(filterText.substring(0, textLength - 3))
-      const companiesRes = await db.query(
-        `SELECT handle,
-                name,
-                description,
-                num_employees AS "numEmployees",
-                logo_url AS "logoUrl"
-         FROM companies
-         ${filterText.substring(0, textLength - 3)}
-         ORDER BY name`);
-      filterText.substring()
-      return companiesRes.rows;
+      return await filterCompanies(filters)
     }
   }
 
@@ -116,17 +80,31 @@ class Company {
       `SELECT handle,
                   name,
                   description,
-                  num_employees AS "numEmployees",
-                  logo_url AS "logoUrl"
+                  num_employees,
+                  logo_url,
+                  jobs.title, jobs.salary, jobs.equity
            FROM companies
+           LEFT JOIN jobs
+           ON companies.handle = jobs.company_handle
            WHERE handle = $1`,
       [handle]);
 
-    const company = companyRes.rows[0];
+    if (!companyRes.rows[0]) throw new NotFoundError(`No company: ${handle}`);
 
-    if (!company) throw new NotFoundError(`No company: ${handle}`);
+    const company = {
+      "handle": companyRes.rows[0].handle,
+      "name": companyRes.rows[0].name,
+      "description" : companyRes.rows[0].description,
+      "numEmployees"  :companyRes.rows[0].num_employees,
+      "logoUrl": companyRes.rows[0].logo_url
 
-    return company;
+    };
+    const jobs = [];
+    for (let row of companyRes.rows){
+      jobs.push({"title": row.title, "salary": row.salary, "equity": row.equity})
+    }
+
+    return {"company":company, "jobs":jobs};
   }
 
   /** Update company data with `data`.
