@@ -110,22 +110,10 @@ describe("register", function () {
 describe("findAll", function () {
   test("works", async function () {
     const users = await User.findAll();
-    expect(users).toEqual([
-      {
-        username: "u1",
-        firstName: "U1F",
-        lastName: "U1L",
-        email: "u1@email.com",
-        isAdmin: false,
-      },
-      {
-        username: "u2",
-        firstName: "U2F",
-        lastName: "U2L",
-        email: "u2@email.com",
-        isAdmin: false,
-      },
-    ]);
+    expect(users.length).toEqual(2);
+    expect(users[0].username).toEqual("u1");
+    expect(users[0].applications.length).toEqual(1)
+    expect(users[1].username).toEqual("u2");
   });
 });
 
@@ -134,7 +122,7 @@ describe("findAll", function () {
 describe("get", function () {
   test("works", async function () {
     let user = await User.get("u1");
-    expect(user).toEqual({
+    expect(user.user).toEqual({
       username: "u1",
       firstName: "U1F",
       lastName: "U1L",
@@ -228,3 +216,18 @@ describe("remove", function () {
     }
   });
 });
+
+/*********************** apply */
+describe("apply", function(){
+  test("works", async function(){
+    let job = await db.query(
+      `
+    SELECT id FROM jobs WHERE title = 'tester'
+    `
+    )
+    let resp =  await User.apply('u1', job.rows[0].id )
+    expect(resp).toEqual({'applied': job.rows[0].id})
+    let userResp = await User.get('u1')
+    expect(userResp.applications.length).toEqual(2)
+  })
+})
