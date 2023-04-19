@@ -102,6 +102,7 @@ router.patch("/:username", ensureLoggedIn, async function (req, res, next) {
       const errs = validator.errors.map(e => e.stack);
       throw new BadRequestError(errs);
     }
+    // check if the user is admin OR the user being searched for is the logged in user
     if (res.locals.user.username == req.params.username || res.locals.user.isAdmin){
       const user = await User.update(req.params.username, req.body);
       return res.json({ user });

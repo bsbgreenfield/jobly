@@ -104,16 +104,44 @@ class User {
 
   static async findAll() {
     const result = await db.query(
-          `SELECT username,
+          `SELECT users.username,
                   first_name AS "firstName",
                   last_name AS "lastName",
                   email,
-                  is_admin AS "isAdmin"
+                  is_admin AS "isAdmin",
+                  job_id
            FROM users
-           ORDER BY username`,
+           LEFT JOIN applications
+           ON users.username = applications.username
+           ORDER BY users.username`,
     );
-
-    return result.rows;
+    let currUser = result.rows[0].username;
+    let resp = [{
+      "username": result.rows[0].username,
+      "firstName":result.rows[0].firstName,
+      "lastName": result.rows[0].lastName,
+      "email": result.rows[0].email,
+      "isAdmin": result.rows[0].isAdmin,
+      "applications" : []
+    }];
+    for (let userObj of result.rows){
+      // if the current object is for the same user, just add the job_id to applications array of the last object
+      if (userObj.username == currUser){
+        resp[resp.length - 1].applications.push(userObj.job_id)
+      }
+      // otherwise, create a new object
+      else{
+        resp.push({
+          "username": userObj.username,
+          "firstName":userObj.firstName,
+          "lastName": userObj.lastName,
+          "email": userObj.email,
+          "isAdmin": userObj.isAdmin,
+          "applications" : userObj.job_id != null ? [userObj.job_id] : []
+        })
+      }
+    }
+    return resp;
   }
 
   /** Given a username, return data about user.

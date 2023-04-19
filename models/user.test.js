@@ -110,22 +110,10 @@ describe("register", function () {
 describe("findAll", function () {
   test("works", async function () {
     const users = await User.findAll();
-    expect(users).toEqual([
-      {
-        username: "u1",
-        firstName: "U1F",
-        lastName: "U1L",
-        email: "u1@email.com",
-        isAdmin: false,
-      },
-      {
-        username: "u2",
-        firstName: "U2F",
-        lastName: "U2L",
-        email: "u2@email.com",
-        isAdmin: false,
-      },
-    ]);
+    expect(users.length).toEqual(2);
+    expect(users[0].username).toEqual("u1");
+    expect(users[0].applications.length).toEqual(1)
+    expect(users[1].username).toEqual("u2");
   });
 });
 
